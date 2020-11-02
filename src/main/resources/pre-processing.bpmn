@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_1" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="4.3.0">
+  <bpmn:process id="pre-processing" name="Preprocessing" isExecutable="true">
+    <bpmn:sequenceFlow id="SequenceFlow_0c4zr6d" sourceRef="startEventRequest" targetRef="formPortfolioRequest" />
+    <bpmn:endEvent id="endEventRequest" name="Request Completed">
+      <bpmn:incoming>Flow_0zsgsrl</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_0zsgsrl" sourceRef="approve" targetRef="endEventRequest" />
+    <bpmn:startEvent id="startEventRequest" name="Request Received">
+      <bpmn:extensionElements>
+        <camunda:formData>
+          <camunda:formField id="portfolioShortName" label="Portfolio Short Name" type="string" />
+          <camunda:formField id="userName" label="User Name" type="string" />
+          <camunda:formField id="documentKey" label="Document Key" type="string" />
+        </camunda:formData>
+      </bpmn:extensionElements>
+      <bpmn:outgoing>SequenceFlow_0c4zr6d</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_13lxy61" messageRef="Message_19abp4n" />
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="preProcessRequest" name="Form Pre-Process Request" camunda:class="com.camunda.couchbase.delegate.request.PreProcessDelegate">
+      <bpmn:extensionElements>
+        <camunda:inputOutput>
+          <camunda:outputParameter name="preProcessRequest">${preProcessRequest}</camunda:outputParameter>
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_0rirw5x</bpmn:incoming>
+      <bpmn:outgoing>Flow_0tchrhl</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_0tchrhl" sourceRef="preProcessRequest" targetRef="verifyPortfolio" />
+    <bpmn:userTask id="intermittentTask" name="Intermittent Task">
+      <bpmn:incoming>Flow_141tu3p</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_1vbokmm</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:sequenceFlow id="SequenceFlow_1vbokmm" sourceRef="intermittentTask" targetRef="getPortfolioDocument" />
+    <bpmn:sequenceFlow id="Flow_0sg063y" sourceRef="insertPreProcessDocument" targetRef="parsePreProcessResponse" />
+    <bpmn:userTask id="approve" name="Approve" camunda:assignee="Aci">
+      <bpmn:incoming>Flow_1in5b7a</bpmn:incoming>
+      <bpmn:outgoing>Flow_0zsgsrl</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:serviceTask id="insertPreProcessDocument" name="Insert PreProcess Document">
+      <bpmn:extensionElements>
+        <camunda:connector>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="payload">${preProcessRequest}</camunda:inputParameter>
+            <camunda:inputParameter name="headers">
+              <camunda:map>
+                <camunda:entry key="Content-Type">application/json</camunda:entry>
+              </camunda:map>
+            </camunda:inputParameter>
+            <camunda:inputParameter name="method">POST</camunda:inputParameter>
+            <camunda:inputParameter name="url">http://localhost:8085/api/document/upsert</camunda:inputParameter>
+            <camunda:outputParameter name="preProcessResponse">${response}</camunda:outputParameter>
+          </camunda:inputOutput>
+          <camunda:connectorId>http-connector</camunda:connectorId>
+        </camunda:connector>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1mhlvpi</bpmn:incoming>
+      <bpmn:outgoing>Flow_0sg063y</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:userTask id="verifyPortfolio" name="Verify Portfolio" camunda:assignee="Aci">
+      <bpmn:incoming>Flow_0tchrhl</bpmn:incoming>
+      <bpmn:outgoing>Flow_1mhlvpi</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:serviceTask id="getPortfolioDocument" name="Get Portfolio Document">
+      <bpmn:extensionElements>
+        <camunda:connector>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="payload">${portfolioRequest}</camunda:inputParameter>
+            <camunda:inputParameter name="payload2">${documentKey}</camunda:inputParameter>
+            <camunda:inputParameter name="headers">
+              <camunda:map>
+                <camunda:entry key="Content-Type">application/json</camunda:entry>
+              </camunda:map>
+            </camunda:inputParameter>
+            <camunda:inputParameter name="method">POST</camunda:inputParameter>
+            <camunda:inputParameter name="url">http://localhost:8085/api/document/key</camunda:inputParameter>
+            <camunda:outputParameter name="portfolioResponse">${response}</camunda:outputParameter>
+          </camunda:inputOutput>
+          <camunda:connectorId>http-connector</camunda:connectorId>
+        </camunda:connector>
+      </bpmn:extensionElements>
+      <bpmn:incoming>SequenceFlow_1vbokmm</bpmn:incoming>
+      <bpmn:outgoing>Flow_1vzi4pe</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_1vzi4pe" sourceRef="getPortfolioDocument" targetRef="parsePortfolioResponse" />
+    <bpmn:sequenceFlow id="Flow_1mhlvpi" sourceRef="verifyPortfolio" targetRef="insertPreProcessDocument" />
+    <bpmn:serviceTask id="parsePortfolioResponse" name="Parse Portfolio Response" camunda:class="com.camunda.couchbase.delegate.response.PortfolioDelegate">
+      <bpmn:extensionElements>
+        <camunda:inputOutput>
+          <camunda:outputParameter name="portfolioData">${portfolioData}</camunda:outputParameter>
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1vzi4pe</bpmn:incoming>
+      <bpmn:outgoing>Flow_18p6o29</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_18p6o29" sourceRef="parsePortfolioResponse" targetRef="verifyPortfolioResponse" />
+    <bpmn:userTask id="verifyPortfolioResponse" name="Verify Portfolio Response" camunda:assignee="Aci">
+      <bpmn:incoming>Flow_18p6o29</bpmn:incoming>
+      <bpmn:outgoing>Flow_0rirw5x</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:sequenceFlow id="Flow_0rirw5x" sourceRef="verifyPortfolioResponse" targetRef="preProcessRequest" />
+    <bpmn:serviceTask id="parsePreProcessResponse" name="Parse PreProcess Response" camunda:class="com.camunda.couchbase.delegate.response.PreProcessDelegate">
+      <bpmn:extensionElements>
+        <camunda:inputOutput>
+          <camunda:outputParameter name="preProcessData">${preProcessData}</camunda:outputParameter>
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_0sg063y</bpmn:incoming>
+      <bpmn:outgoing>Flow_1in5b7a</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_1in5b7a" sourceRef="parsePreProcessResponse" targetRef="approve" />
+    <bpmn:serviceTask id="formPortfolioRequest" name="Form Portfolio Request" camunda:class="com.camunda.couchbase.delegate.request.PortfolioDelegate">
+      <bpmn:extensionElements>
+        <camunda:inputOutput>
+          <camunda:outputParameter name="portfolioRequest">${portfolioRequest}</camunda:outputParameter>
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
+      <bpmn:incoming>SequenceFlow_0c4zr6d</bpmn:incoming>
+      <bpmn:outgoing>Flow_141tu3p</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_141tu3p" sourceRef="formPortfolioRequest" targetRef="intermittentTask" />
+  </bpmn:process>
+  <bpmn:message id="Message_19abp4n" name="preprocessingMsg" />
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="pre-processing">
+      <bpmndi:BPMNEdge id="Flow_141tu3p_di" bpmnElement="Flow_141tu3p">
+        <di:waypoint x="300" y="200" />
+        <di:waypoint x="300" y="160" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1in5b7a_di" bpmnElement="Flow_1in5b7a">
+        <di:waypoint x="890" y="240" />
+        <di:waypoint x="930" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0rirw5x_di" bpmnElement="Flow_0rirw5x">
+        <di:waypoint x="580" y="200" />
+        <di:waypoint x="580" y="160" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_18p6o29_di" bpmnElement="Flow_18p6o29">
+        <di:waypoint x="490" y="240" />
+        <di:waypoint x="530" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1mhlvpi_di" bpmnElement="Flow_1mhlvpi">
+        <di:waypoint x="760" y="120" />
+        <di:waypoint x="790" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1vzi4pe_di" bpmnElement="Flow_1vzi4pe">
+        <di:waypoint x="440" y="160" />
+        <di:waypoint x="440" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0sg063y_di" bpmnElement="Flow_0sg063y">
+        <di:waypoint x="840" y="160" />
+        <di:waypoint x="840" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_1vbokmm_di" bpmnElement="SequenceFlow_1vbokmm">
+        <di:waypoint x="350" y="120" />
+        <di:waypoint x="390" y="120" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="451.5" y="110" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0tchrhl_di" bpmnElement="Flow_0tchrhl">
+        <di:waypoint x="630" y="120" />
+        <di:waypoint x="660" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0zsgsrl_di" bpmnElement="Flow_0zsgsrl">
+        <di:waypoint x="980" y="200" />
+        <di:waypoint x="980" y="138" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_0c4zr6d_di" bpmnElement="SequenceFlow_0c4zr6d">
+        <di:waypoint x="198" y="240" />
+        <di:waypoint x="250" y="240" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="198.5" y="110" width="90" height="20" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="EndEvent_1i5bz86_di" bpmnElement="endEventRequest">
+        <dc:Bounds x="962" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="953" y="64.5" width="54" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_17fp5lr_di" bpmnElement="startEventRequest">
+        <dc:Bounds x="162" y="222" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="135" y="258" width="90" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_02rc2k0_di" bpmnElement="preProcessRequest">
+        <dc:Bounds x="530" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="UserTask_11fud4o_di" bpmnElement="intermittentTask">
+        <dc:Bounds x="250" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_03oju9f_di" bpmnElement="approve">
+        <dc:Bounds x="930" y="200" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_03e9qf7_di" bpmnElement="insertPreProcessDocument">
+        <dc:Bounds x="790" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0bfvow0_di" bpmnElement="verifyPortfolio">
+        <dc:Bounds x="660" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0t50efw_di" bpmnElement="getPortfolioDocument">
+        <dc:Bounds x="390" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_11un5op_di" bpmnElement="parsePortfolioResponse">
+        <dc:Bounds x="390" y="200" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1nwoaam_di" bpmnElement="verifyPortfolioResponse">
+        <dc:Bounds x="530" y="200" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0m2s9wf_di" bpmnElement="parsePreProcessResponse">
+        <dc:Bounds x="790" y="200" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0ko5ddn_di" bpmnElement="formPortfolioRequest">
+        <dc:Bounds x="250" y="200" width="100" height="80" />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

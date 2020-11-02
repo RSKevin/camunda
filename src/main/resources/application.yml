@@ -1,0 +1,25 @@
+spring:
+  profiles:
+    active:
+      - test
+---
+
+spring:
+  profiles: test
+environment: test
+bucket: equitypm-tst
+couchbaseUsername: Administrator
+couchbasePassword: RSK12@couchbase
+servers:
+  - localhost
+
+camunda.bpm:
+  admin-user:
+    id: aci
+    password: aci
+    firstName: ACI
+  filter:
+    create: All tasks
+
+server:
+  port: 8085
