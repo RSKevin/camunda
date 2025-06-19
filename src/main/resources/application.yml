@@ -9,7 +9,7 @@ spring:
 environment: test
 bucket: equitypm-tst
 couchbaseUsername: Administrator
-couchbasePassword: RSK12@couchbase
+couchbasePassword: c0uch6a5e
 servers:
   - localhost
 
